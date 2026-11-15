@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050811" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Нейра" />
+  <link id="manifestLink" rel="manifest" />
+  <title>НЕЙРА — AI Ассистент</title>
+  <style>
+    :root {
+      --bg: #050811;
+      --cyan: #00f0ff;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --danger: #ff3b5c;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #0c1428 0%, var(--bg) 75%);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: env(safe-area-inset-top, 20px) 20px env(safe-area-inset-bottom, 24px);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      font-size: 1.1rem;
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      color: var(--text);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .orb-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+
+    canvas#orbCanvas {
+      width: 300px;
+      height: 300px;
+      cursor: pointer;
+    }
+
+    .state-label {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      opacity: 0.85;
+      height: 20px;
+    }
+
+    .transcript-box {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto 16px;
+      min-height: 90px;
+      max-height: 150px;
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 18px;
+      padding: 14px 16px;
+      backdrop-filter: blur(12px);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .msg-user {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+
+    .msg-ai {
+      color: var(--text);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .text-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .text-input:focus {
+      border-color: var(--cyan);
+    }
+
+    .mic-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #030712;
+      font-size: 1.3rem;
+      font-weight: bold;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+      transition: transform 0.2s, background 0.3s;
+      flex-shrink: 0;
+    }
+
+    .mic-btn.listening {
+      background: linear-gradient(135deg, var(--danger), #f97316);
+      box-shadow: 0 0 25px rgba(255, 59, 92, 0.6);
+      transform: scale(1.08);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.88);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 50;
+    }
+
+    .modal.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 20px;
+      padding: 22px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-card h3 {
+      color: var(--cyan);
+      font-size: 1.1rem;
+    }
+
+    .modal-card label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .modal-card input, .modal-card select, .modal-card textarea {
+      background: #050811;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .save-btn {
+      background: var(--cyan);
+      color: #050811;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="status-dot" id="statusDot"></div>
+      НЕЙРА
+    </div>
+    <button class="icon-btn" id="settingsBtn" title="Настройки">⚙️</button>
+  </header>
+
+  <div class="orb-container">
+    <canvas id="orbCanvas" width="600" height="600"></canvas>
+    <div class="state-label" id="stateLabel">Ожидание</div>
+  </div>
+
+  <div class="transcript-box" id="transcriptBox">
+    <div class="msg-ai">Системы в норме. Нажмите на сферу или микрофон, чтобы поговорить.</div>
+  </div>
+
+  <div class="controls">
+    <input type="text" class="text-input" id="textInput" placeholder="Или напишите команду..." />
+    <button class="mic-btn" id="micBtn">🎙️</button>
+  </div>
+
+  <div class="modal" id="settingsModal">
+    <div class="modal-card">
+      <h3>Ядро Нейры</h3>
+      <label>
+        Gemini API Key (получить в Google AI Studio):
+        <input type="password" id="apiKeyInput" placeholder="AIzaSy..." />
+      </label>
+      <label>
+        Модель:
+        <select id="modelSelect">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Быстрая)</option>
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Умная)</option>
+        </select>
+      </label>
+      <label>
+        Характер (System Prompt):
+        <textarea id="personaInput" rows="3"></textarea>
+      </label>
+      <button class="save-btn" id="saveSettingsBtn">Сохранить и активировать</button>
+    </div>
+  </div>
+
+  <script>
+    const manifest = {
+      name: "НЕЙРА — Персональный ИИ",
+      short_name: "Нейра",
+      display: "standalone",
+      background_color: "#050811",
+      theme_color: "#050811",
+      orientation: "portrait",
+      icons: [{
+        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23050811'/><circle cx='50' cy='50' r='30' fill='none' stroke='%2300f0ff' stroke-width='6'/><circle cx='50' cy='50' r='12' fill='%2300f0ff'/></svg>",
+        sizes: "512x512",
+        type: "image/svg+xml"
+      }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    document.getElementById('manifestLink').href = URL.createObjectURL(manifestBlob);
+
+    let appState = 'idle';
+    let audioLevel = 0;
+    let chatHistory = [];
+
+    const DEFAULT_PERSONA = "Ты — Нейра, персональный искусственный интеллект в стиле Джарвиса. Отвечай кратко, умно, с легкой иронией и без лишней воды (максимум 2-3 предложения, так как твой ответ озвучивается голосом). Не используй символы разметки вроде звездочек или решеток.";
+
+    let config = {
+      apiKey: localStorage.getItem('neira_api_key') || '',
+      model: localStorage.getItem('neira_model') || 'gemini-2.5-flash',
+      persona: localStorage.getItem('neira_persona') || DEFAULT_PERSONA
+    };
+
+    const stateLabel = document.getElementById('stateLabel');
+    const transcriptBox = document.getElementById('transcriptBox');
+    const micBtn = document.getElementById('micBtn');
+    const textInput = document.getElementById('textInput');
+    const settingsModal = document.getElementById('settingsModal');
+
+    function setState(newState, labelText) {
+      appState = newState;
+      stateLabel.textContent = labelText;
+      micBtn.classList.toggle('listening', newState === 'listening');
+    }
+
+    const canvas = document.getElementById('orbCanvas');
+    const ctx = canvas.getContext('2d');
+    let phase = 0;
+
+    function drawOrb() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      let primary = [0, 240, 255];
+      let secondary = [59, 130, 246];
+      let speed = 0.02;
+      let amp = 6;
+
+      if (appState === 'listening') {
+        primary = [255, 59, 92];
+        secondary = [249, 115, 22];
+        speed = 0.06;
+        amp = 14 + audioLevel * 35;
+      } else if (appState === 'thinking') {
+        primary = [139, 92, 246];
+        secondary = [0, 240, 255];
+        speed = 0.09;
+        amp = 10;
+      } else if (appState === 'speaking') {
+        primary = [0, 240, 255];
+        secondary = [168, 85, 247];
+        speed = 0.07;
+        amp = 16 + Math.abs(Math.sin(phase * 3)) * 22;
+      }
+
+      phase += speed;
+
+      const grad = ctx.createRadialGradient(cx, cy, 40, cx, cy, 220);
+      grad.addColorStop(0, `rgba(${primary.join(',')}, 0.35)`);
+      grad.addColorStop(0.6, `rgba(${secondary.join(',')}, 0.08)`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 220, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let ring = 0; ring < 3; ring++) {
+        ctx.beginPath();
+        const baseRadius = 115 + ring * 18;
+        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.08) {
+          const wave = Math.sin(a * (3 + ring) + phase * (ring % 2 === 0 ? 1 : -1.3)) * amp;
+          const r = baseRadius + wave;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + Math.sin(a) * r;
+          if (a === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = ring === 0
+          ? `rgba(${primary.join(',')}, 0.9)`
+          : `rgba(${secondary.join(',')}, ${0.55 - ring * 0.15})`;
+        ctx.lineWidth = ring === 0 ? 3.5 : 2;
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 78 + Math.sin(phase * 2) * 4, 0, Math.PI * 2);
+      const coreGrad = ctx.createRadialGradient(cx - 20, cy - 20, 10, cx, cy, 85);
+      coreGrad.addColorStop(0, '#ffffff');
+      coreGrad.addColorStop(0.3, `rgba(${primary.join(',')}, 0.85)`);
+      coreGrad.addColorStop(1, `rgba(${secondary.join(',')}, 0.2)`);
+      ctx.fillStyle = coreGrad;
+      ctx.fill();
+
+      requestAnimationFrame(drawOrb);
+    }
+    drawOrb();
+
+    let audioCtx, analyser, micStream;
+    async function startAudioVisualizer() {
+      try {
+        if (!micStream) {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioCtx.createMediaStreamSource(micStream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+        }
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        function updateLevel() {
+          if (appState !== 'listening') { audioLevel = 0; return; }
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((a, b) => a + b, 0) / data.length;
+          audioLevel = avg / 128;
+          requestAnimationFrame(updateLevel);
+        }
+        updateLevel();
+      } catch (e) {}
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ru-RU';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        window.speechSynthesis.cancel();
+        setState('listening', 'Слушаю...');
+        startAudioVisualizer();
+      };
+
+      recognition.onresult = (event) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) final += event.results[i][0].transcript;
+          else interim += event.results[i][0].transcript;
+        }
+        transcriptBox.innerHTML = `<div class="msg-user">Вы: ${final || interim}</div>`;
+        if (final) {
+          recognition.stop();
+          askNeira(final.trim());
+        }
+      };
+
+      recognition.onerror = () => setState('idle', 'Ожидание');
+      recognition.onend = () => {
+        if (appState === 'listening') setState('idle', 'Ожидание');
+      };
+    }
+
+    function toggleListening() {
+      if (!config.apiKey) {
+        settingsModal.classList.add('open');
+        return;
+      }
+      if (appState === 'speaking') {
+        window.speechSynthesis.cancel();
+        setState('idle', 'Ожидание');
+        return;
+      }
+      if (!recognition) {
+        alert('Голосовой ввод не поддерживается в этом браузере. Используйте Chrome или Safari.');
+        return;
+      }
+      if (appState === 'listening') {
+        recognition.stop();
+      } else {
+        try { recognition.start(); } catch (e) {}
+      }
+    }
+
+    micBtn.addEventListener('click', toggleListening);
+    canvas.addEventListener('click', toggleListening);
+
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && textInput.value.trim()) {
+        const text = textInput.value.trim();
+        textInput.value = '';
+        askNeira(text);
+      }
+    });
+
+    async function askNeira(userText) {
+      if (!config.apiKey) {
+        settingsModal.classList.add('open');
+        return;
+      }
+
+      setState('thinking', 'Обработка...');
+      transcriptBox.innerHTML = `<div class="msg-user">Вы: ${userText}</div><div class="msg-ai">...</div>`;
+
+      chatHistory.push({ role: 'user', parts: [{ text: userText }] });
+      if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: config.persona }] },
+            contents: chatHistory,
+            generationConfig: { temperature: 0.7, maxOutputTokens: 300 }
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error?.message || 'Ошибка API');
+
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Не удалось получить ответ.';
+        chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+
+        transcriptBox.innerHTML = `<div class="msg-user">Вы: ${userText}</div><div class="msg-ai">${reply}</div>`;
+        speak(reply);
+      } catch (err) {
+        setState('idle', 'Ошибка');
+        transcriptBox.innerHTML = `<div class="msg-ai" style="color:#ff3b5c">Сбой ядра: ${err.message}</div>`;
+      }
+    }
+
+    function speak(text) {
+      if (!('speechSynthesis' in window)) {
+        setState('idle', 'Ожидание');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const cleanText = text.replace(/[*#_`]/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const ruVoice = voices.find(v => v.lang.includes('ru') && (v.name.includes('Milena') || v.name.includes('Google') || v.name.includes('Svetlana')))
+                   || voices.find(v => v.lang.includes('ru'));
+      if (ruVoice) utterance.voice = ruVoice;
+
+      utterance.onstart = () => setState('speaking', 'Нейра говорит');
+      utterance.onend = () => setState('idle', 'Ожидание');
+      utterance.onerror = () => setState('idle', 'Ожидание');
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      document.getElementById('apiKeyInput').value = config.apiKey;
+      document.getElementById('modelSelect').value = config.model;
+      document.getElementById('personaInput').value = config.persona;
+      settingsModal.classList.add('open');
+    });
+
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+      config.apiKey = document.getElementById('apiKeyInput').value.trim();
+      config.model = document.getElementById('modelSelect').value;
+      config.persona = document.getElementById('personaInput').value.trim() || DEFAULT_PERSONA;
+
+      localStorage.setItem('neira_api_key', config.apiKey);
+      localStorage.setItem('neira_model', config.model);
+      localStorage.setItem('neira_persona', config.persona);
+
+      settingsModal.classList.remove('open');
+      speak('Ядро инициализировано. Готова к работе.');
+    });
+
+    if (!config.apiKey) {
+      setTimeout(() => settingsModal.classList.add('open'), 600);
+    }
+  </script>
+</body>
+</html>

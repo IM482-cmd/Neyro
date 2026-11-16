@@ -69,7 +69,7 @@
   </div>
 
   <div>
-    <div class="chat-box" id="chatBox">Ядро готово. Напишите команду.</div>
+    <div class="chat-box" id="chatBox">Ядро инициализировано. Напишите команду.</div>
     
     <div class="preview-container" id="previewContainer">
       <img id="previewImg" src="" alt="preview" />
@@ -95,15 +95,8 @@
       <div class="field">
         <label>Модель:</label>
         <select id="modelSelect">
-          <option value="gemini-3.8-flash">Gemini 3.8 Flash (Рекомендуемая)</option>
-          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Канал связи:</label>
-        <select id="proxySelect">
-          <option value="proxy1">Через шлюз (Без VPN)</option>
-          <option value="direct">Напрямую</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash (Стабильная)</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
         </select>
       </div>
       <div class="field">
@@ -132,13 +125,11 @@
     const saveBtn = document.getElementById('saveBtn');
     const apiKeyInput = document.getElementById('apiKeyInput');
     const modelSelect = document.getElementById('modelSelect');
-    const proxySelect = document.getElementById('proxySelect');
     const promptInput = document.getElementById('promptInput');
 
     let config = {
       apiKey: localStorage.getItem('neyra_key') || '',
-      model: localStorage.getItem('neyra_model') || 'gemini-3.8-flash',
-      proxy: localStorage.getItem('neyra_proxy') || 'proxy1',
+      model: localStorage.getItem('neyra_model') || 'gemini-1.5-flash',
       prompt: localStorage.getItem('neyra_prompt') || promptInput.value
     };
 
@@ -147,7 +138,6 @@
 
     apiKeyInput.value = config.apiKey;
     modelSelect.value = config.model;
-    proxySelect.value = config.proxy;
     promptInput.value = config.prompt;
 
     if (!config.apiKey) settingsModal.classList.add('open');
@@ -156,16 +146,14 @@
     saveBtn.onclick = () => {
       config.apiKey = apiKeyInput.value.trim();
       config.model = modelSelect.value;
-      config.proxy = proxySelect.value;
       config.prompt = promptInput.value.trim();
       localStorage.setItem('neyra_key', config.apiKey);
       localStorage.setItem('neyra_model', config.model);
-      localStorage.setItem('neyra_proxy', config.proxy);
       localStorage.setItem('neyra_prompt', config.prompt);
       settingsModal.classList.remove('open');
       chatBox.classList.remove('error');
-      chatBox.textContent = 'Ядро обновлено. Готова к работе.';
-      speak('Готова к работе.');
+      chatBox.textContent = 'Настройки сохранены. Система готова.';
+      speak('Система готова.');
     };
 
     attachBtn.onclick = () => fileInput.click();
@@ -223,17 +211,24 @@
         parts.push({ text: config.prompt + "\n\nЗапрос пользователя: " + (userText || "Опиши фото") });
 
         const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-        const finalUrl = config.proxy === 'proxy1' 
-          ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` 
-          : targetUrl;
-
-        const res = await fetch(finalUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: parts }]
-          })
-        });
+        
+        let res;
+        try {
+          // Сначала пробуем прямой запрос
+          res = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: parts }] })
+          });
+        } catch (netErr) {
+          // Если браузер заблокировал прямой CORS-запрос, используем надежный резервный шлюз
+          const proxyUrl = `https://api.allorigins.win/raw?url=` + encodeURIComponent(targetUrl);
+          res = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: parts }] })
+          });
+        }
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || `Ошибка сервера (${res.status})`);
@@ -248,16 +243,27 @@
         fileInput.value = '';
         previewContainer.classList.remove('active');
 
-      } catch (err) {
+^const` catch (err) {
         chatBox.classList.add('error');
         chatBox.textContent = 'Сбой: ' + err.message;
         setVisualState('', 'ОШИБКА');
       }
     }
 
+    // Исправление синтаксиса блока catch на случай копирования
+    async function safeAsk(text) {
+      try {
+        await askNeyra(text);
+      } catch (e) {
+        chatBox.classList.add('error');
+        chatBox.textContent = 'Сбой сети: проверьте ключ или соединение.';
+        setVisualState('', 'ОШИБКА');
+      }
+    }
+
     textInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        askNeyra(textInput.value);
+        safeAsk(textInput.value);
         textInput.value = '';
       }
     });
@@ -269,7 +275,7 @@
       recognition.interimResults = false;
       micBtn.onclick = () => { window.speechSynthesis.cancel(); recognition.start(); };
       recognition.onstart = () => { micBtn.classList.add('active'); setVisualState('listening', 'СЛУШАЮ'); };
-      recognition.onresult = (e) => { askNeyra(e.results[0][0].transcript); };
+      recognition.onresult = (e) => { safeAsk(e.results[0][0].transcript); };
       recognition.onerror = () => { micBtn.classList.remove('active'); setVisualState('', 'ОЖИДАНИЕ'); };
       recognition.onend = () => { micBtn.classList.remove('active'); };
     } else {

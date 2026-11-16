@@ -69,7 +69,7 @@
   </div>
 
   <div>
-    <div class="chat-box" id="chatBox">Ядро готово (режим прокси активен). Напишите команду.</div>
+    <div class="chat-box" id="chatBox">Ядро готово. Напишите команду.</div>
     
     <div class="preview-container" id="previewContainer">
       <img id="previewImg" src="" alt="preview" />
@@ -95,15 +95,15 @@
       <div class="field">
         <label>Модель:</label>
         <select id="modelSelect">
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Безлимитная/Быстрая)</option>
-          <option value="gemini-1.5-flash">Gemini 1.5 Flash (Резервная)</option>
+          <option value="gemini-3.8-flash">Gemini 3.8 Flash (Рекомендуемая)</option>
+          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
         </select>
       </div>
       <div class="field">
         <label>Канал связи:</label>
         <select id="proxySelect">
-          <option value="proxy1">Через шлюз №1 (CorsProxy - без VPN)</option>
-          <option value="direct">Напрямую (если включен VPN)</option>
+          <option value="proxy1">Через шлюз (Без VPN)</option>
+          <option value="direct">Напрямую</option>
         </select>
       </div>
       <div class="field">
@@ -137,7 +137,7 @@
 
     let config = {
       apiKey: localStorage.getItem('neyra_key') || '',
-      model: localStorage.getItem('neyra_model') || 'gemini-2.5-flash',
+      model: localStorage.getItem('neyra_model') || 'gemini-3.8-flash',
       proxy: localStorage.getItem('neyra_proxy') || 'proxy1',
       prompt: localStorage.getItem('neyra_prompt') || promptInput.value
     };
@@ -164,8 +164,8 @@
       localStorage.setItem('neyra_prompt', config.prompt);
       settingsModal.classList.remove('open');
       chatBox.classList.remove('error');
-      chatBox.textContent = 'Настройки применены. Канал связи готов.';
-      speak('Канал связи готов.');
+      chatBox.textContent = 'Ядро обновлено. Готова к работе.';
+      speak('Готова к работе.');
     };
 
     attachBtn.onclick = () => fileInput.click();
@@ -223,290 +223,6 @@
         parts.push({ text: config.prompt + "\n\nЗапрос пользователя: " + (userText || "Опиши фото") });
 
         const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-        
-        // Используем прокси-шлюз, если выбран режим без VPN
-        const finalUrl = config.proxy === 'proxy1' 
-          ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` 
-          : targetUrl;
-
-        const res = await fetch(finalUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: parts }]
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `Ошибка сервера (${res.status})`);
-        
-        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа от ядра.';
-        chatBox.textContent = reply;
-        setVisualState('', 'ОЖИДАНИЕ');
-        speak(reply);
-
-        selectedImageBase64 = null;
-        selectedImageMimeType = null;
-        fileInput.value = '';
-        previewContainer.classList.remove('active');
-
-      } catch (err) {
-        chatBox.classList.add('error');
-        chatBox.textContent = 'Сбой: ' + err.message;
-        setVisualState('', 'ОШИБКА');
-      }
-    }
-
-    textInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        askNeyra(textInput.value);
-        textInput.value = '';
-      }
-    });
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'ru-RU';
-      recognition.interimResults = false;
-      micBtn.onclick = () => { window.speechSynthesis.cancel(); recognition.start(); };
-      recognition.onstart = () => { micBtn.classList.add('active'); setVisualState('listening', 'СЛУШАЮ'); };
-      recognition.onresult = (e) => { askNeyra(e.results[0][0].transcript); };
-      recognition.onerror = () => { micBtn.classList.remove('active'); setVisualState('', 'ОЖИДАНИЕ'); };
-      recognition.onend = () => { micBtn.classList.remove('active'); };
-    } else {
-      micBtn.onclick = () => alert('Голосовой ввод не поддерживается в этом браузере.');
-    }
-  </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#050811" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Нейра" />
-  <title>НЕЙРА — AI Ассистент</title>
-  <style>
-    :root {
-      --bg: #050811;
-      --cyan: #00f0ff;
-      --blue: #3b82f6;
-      --purple: #8b5cf6;
-      --danger: #ff3b5c;
-      --text: #e2e8f0;
-      --muted: #64748b;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: radial-gradient(circle at center, #0c1428 0%, var(--bg) 75%); color: var(--text); height: 100dvh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 24px); }
-    header { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; z-index: 10; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 3px; font-size: 1.1rem; color: var(--cyan); text-shadow: 0 0 12px rgba(0, 240, 255, 0.5); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
-    .icon-btn { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.2); color: var(--text); width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; font-size: 1.1rem; }
-    .core-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
-    .orb { width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffffff 0%, var(--cyan) 25%, var(--blue) 65%, transparent 100%); box-shadow: 0 0 40px rgba(0, 240, 255, 0.4), inset 0 0 25px rgba(255, 255, 255, 0.6); transition: all 0.4s ease; animation: pulse 4s infinite ease-in-out; }
-    .orb.listening { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #ff3b5c 35%, #8b5cf6 75%, transparent 100%); box-shadow: 0 0 60px rgba(255, 59, 92, 0.7); animation: pulse-fast 1s infinite ease-in-out; }
-    .orb.thinking { background: radial-gradient(circle at 35% 35%, #ffffff 0%, var(--purple) 40%, var(--cyan) 80%, transparent 100%); box-shadow: 0 0 60px rgba(139, 92, 246, 0.7); animation: spin-glow 1.5s infinite linear; }
-    .orb.speaking { box-shadow: 0 0 70px rgba(0, 240, 255, 0.9); transform: scale(1.08); }
-    @keyframes pulse { 0%, 100% { transform: scale(0.96); opacity: 0.85; } 50% { transform: scale(1.03); opacity: 1; } }
-    @keyframes pulse-fast { 0%, 100% { transform: scale(0.95); } 50% { transform: scale(1.12); } }
-    @keyframes spin-glow { 0% { transform: rotate(0deg) scale(1.02); } 100% { transform: rotate(360deg) scale(1.02); } }
-    .state-label { margin-top: 24px; font-size: 0.78rem; letter-spacing: 3px; text-transform: uppercase; color: var(--cyan); opacity: 0.85; }
-    .chat-box { width: 100%; max-height: 26dvh; overflow-y: auto; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.5; backdrop-filter: blur(10px); }
-    .chat-box.error { border-color: rgba(255, 59, 92, 0.5); color: #ff8fa3; }
-    
-    .preview-container { display: none; align-items: center; gap: 10px; background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.3); padding: 8px 12px; border-radius: 12px; margin-bottom: 10px; }
-    .preview-container.active { display: flex; }
-    .preview-container img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
-    .preview-name { font-size: 0.82rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cyan); }
-    .remove-file { background: none; border: none; color: var(--danger); font-size: 1rem; cursor: pointer; padding: 4px; }
-
-    .controls { display: flex; gap: 8px; align-items: center; }
-    .text-input { flex: 1; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 22px; padding: 12px 16px; color: var(--text); font-size: 0.92rem; outline: none; }
-    .action-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(0, 240, 255, 0.25); background: rgba(255, 255, 255, 0.05); color: var(--cyan); display: grid; place-items: center; cursor: pointer; font-size: 1.1rem; }
-    .mic-btn { background: linear-gradient(135deg, var(--cyan), var(--blue)); color: #050811; border: none; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); }
-    .mic-btn.active { background: var(--danger); color: #fff; box-shadow: 0 0 20px rgba(255, 59, 92, 0.6); }
-
-    .modal { position: fixed; inset: 0; background: rgba(5, 8, 17, 0.92); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
-    .modal.open { display: flex; }
-    .modal-card { width: 100%; max-width: 400px; background: #0f172a; border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-    .modal-card h2 { color: var(--cyan); font-size: 1.2rem; }
-    .field label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
-    .field input, .field select, .field textarea { width: 100%; background: #050811; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 11px 12px; color: var(--text); font-size: 0.9rem; outline: none; }
-    .save-btn { background: linear-gradient(90deg, var(--cyan), #2dd4bf); color: #050811; border: none; border-radius: 12px; padding: 13px; font-weight: 700; font-size: 0.95rem; cursor: pointer; margin-top: 6px; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand"><span class="status-dot"></span>НЕЙРА</div>
-    <button class="icon-btn" id="settingsBtn" title="Настройки">⚙️</button>
-  </header>
-
-  <div class="core-container">
-    <div class="orb" id="orb"></div>
-    <div class="state-label" id="stateLabel">ОЖИДАНИЕ</div>
-  </div>
-
-  <div>
-    <div class="chat-box" id="chatBox">Ядро готово (режим прокси активен). Напишите команду.</div>
-    
-    <div class="preview-container" id="previewContainer">
-      <img id="previewImg" src="" alt="preview" />
-      <span class="preview-name" id="previewName">фото.jpg</span>
-      <button class="remove-file" id="removeFileBtn">✕</button>
-    </div>
-
-    <div class="controls">
-      <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-      <button class="action-btn" id="attachBtn" title="Прикрепить фото">📎</button>
-      <input type="text" class="text-input" id="textInput" placeholder="Или напишите команду..." />
-      <button class="action-btn mic-btn" id="micBtn" title="Голосовой ввод">🎙️</button>
-    </div>
-  </div>
-
-  <div class="modal" id="settingsModal">
-    <div class="modal-card">
-      <h2>Ядро Нейры</h2>
-      <div class="field">
-        <label>Gemini API Key:</label>
-        <input type="password" id="apiKeyInput" placeholder="AIzaSy..." />
-      </div>
-      <div class="field">
-        <label>Модель:</label>
-        <select id="modelSelect">
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Безлимитная/Быстрая)</option>
-          <option value="gemini-1.5-flash">Gemini 1.5 Flash (Резервная)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Канал связи:</label>
-        <select id="proxySelect">
-          <option value="proxy1">Через шлюз №1 (CorsProxy - без VPN)</option>
-          <option value="direct">Напрямую (если включен VPN)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Характер (System Prompt):</label>
-        <textarea id="promptInput" rows="2">Ты — Нейра, голосовой ИИ-ассистент в стиле Джарвиса. Отвечай кратко, умно и по делу (2-3 предложения).</textarea>
-      </div>
-      <button class="save-btn" id="saveBtn">Сохранить и активировать</button>
-    </div>
-  </div>
-
-  <script>
-    const orb = document.getElementById('orb');
-    const stateLabel = document.getElementById('stateLabel');
-    const chatBox = document.getElementById('chatBox');
-    const textInput = document.getElementById('textInput');
-    const micBtn = document.getElementById('micBtn');
-    const attachBtn = document.getElementById('attachBtn');
-    const fileInput = document.getElementById('fileInput');
-    const previewContainer = document.getElementById('previewContainer');
-    const previewImg = document.getElementById('previewImg');
-    const previewName = document.getElementById('previewName');
-    const removeFileBtn = document.getElementById('removeFileBtn');
-
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsBtn = document.getElementById('settingsBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    const modelSelect = document.getElementById('modelSelect');
-    const proxySelect = document.getElementById('proxySelect');
-    const promptInput = document.getElementById('promptInput');
-
-    let config = {
-      apiKey: localStorage.getItem('neyra_key') || '',
-      model: localStorage.getItem('neyra_model') || 'gemini-2.5-flash',
-      proxy: localStorage.getItem('neyra_proxy') || 'proxy1',
-      prompt: localStorage.getItem('neyra_prompt') || promptInput.value
-    };
-
-    let selectedImageBase64 = null;
-    let selectedImageMimeType = null;
-
-    apiKeyInput.value = config.apiKey;
-    modelSelect.value = config.model;
-    proxySelect.value = config.proxy;
-    promptInput.value = config.prompt;
-
-    if (!config.apiKey) settingsModal.classList.add('open');
-
-    settingsBtn.onclick = () => settingsModal.classList.add('open');
-    saveBtn.onclick = () => {
-      config.apiKey = apiKeyInput.value.trim();
-      config.model = modelSelect.value;
-      config.proxy = proxySelect.value;
-      config.prompt = promptInput.value.trim();
-      localStorage.setItem('neyra_key', config.apiKey);
-      localStorage.setItem('neyra_model', config.model);
-      localStorage.setItem('neyra_proxy', config.proxy);
-      localStorage.setItem('neyra_prompt', config.prompt);
-      settingsModal.classList.remove('open');
-      chatBox.classList.remove('error');
-      chatBox.textContent = 'Настройки применены. Канал связи готов.';
-      speak('Канал связи готов.');
-    };
-
-    attachBtn.onclick = () => fileInput.click();
-
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(uploadEvent) {
-        selectedImageBase64 = uploadEvent.target.result.split(',')[1];
-        selectedImageMimeType = file.type;
-        previewImg.src = uploadEvent.target.result;
-        previewName.textContent = file.name;
-        previewContainer.classList.add('active');
-      };
-      reader.readAsDataURL(file);
-    };
-
-    removeFileBtn.onclick = () => {
-      selectedImageBase64 = null;
-      selectedImageMimeType = null;
-      fileInput.value = '';
-      previewContainer.classList.remove('active');
-    };
-
-    function setVisualState(state, label) {
-      orb.className = 'orb ' + state;
-      stateLabel.textContent = label;
-    }
-
-    function speak(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.replace(/[*#_`]/g, ''));
-      utterance.lang = 'ru-RU';
-      utterance.rate = 1.05;
-      utterance.onstart = () => setVisualState('speaking', 'ГОВОРЮ');
-      utterance.onend = () => setVisualState('', 'ОЖИДАНИЕ');
-      window.speechSynthesis.speak(utterance);
-    }
-
-    async function askNeyra(userText) {
-      if (!userText.trim() && !selectedImageBase64) return;
-      if (!config.apiKey) { settingsModal.classList.add('open'); return; }
-      
-      chatBox.classList.remove('error');
-      chatBox.textContent = userText ? 'Вы: ' + userText : 'Вы: [Отправлено фото]';
-      setVisualState('thinking', 'ОБРАБОТКА');
-
-      try {
-        const parts = [];
-        if (selectedImageBase64) {
-          parts.push({ inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } });
-        }
-        parts.push({ text: config.prompt + "\n\nЗапрос пользователя: " + (userText || "Опиши фото") });
-
-        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-        
-        // Используем прокси-шлюз, если выбран режим без VPN
         const finalUrl = config.proxy === 'proxy1' 
           ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` 
           : targetUrl;

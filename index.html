@@ -95,8 +95,8 @@
       <div class="field">
         <label>Модель:</label>
         <select id="modelSelect">
-          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Рекомендуемая)</option>
-          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Умная)</option>
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash (Стабильная)</option>
         </select>
       </div>
       <div class="field">
@@ -129,7 +129,7 @@
 
     let config = {
       apiKey: localStorage.getItem('neyra_key') || '',
-      model: localStorage.getItem('neyra_model') || 'gemini-2.5-flash',
+      model: localStorage.getItem('neyra_model') || 'gemini-1.5-flash',
       prompt: localStorage.getItem('neyra_prompt') || promptInput.value
     };
 
@@ -219,11 +219,10 @@
         }
         parts.push({ text: userText || "Опиши что на этом фото и ответь на русском." });
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${config.model}:generateContent?key=${config.apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: config.prompt }] },
             contents: [{ role: 'user', parts: parts }]
           })
         });
@@ -285,3 +284,4 @@
   </script>
 </body>
 </html>
+

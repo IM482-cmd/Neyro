@@ -95,8 +95,8 @@
       <div class="field">
         <label>Модель:</label>
         <select id="modelSelect">
-          <option value="gemini-3.8-flash">Gemini 3.8 Flash (Быстрая)</option>
-          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Умная)</option>
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash (Рекомендуемая)</option>
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro (Умная)</option>
         </select>
       </div>
       <div class="field">
@@ -129,7 +129,7 @@
 
     let config = {
       apiKey: localStorage.getItem('neyra_key') || '',
-      model: localStorage.getItem('neyra_model') || 'gemini-3.8-flash',
+      model: localStorage.getItem('neyra_model') || 'gemini-2.5-flash',
       prompt: localStorage.getItem('neyra_prompt') || promptInput.value
     };
 
@@ -242,11 +242,7 @@
 
       } catch (err) {
         chatBox.classList.add('error');
-        if (err.message.includes('Failed to fetch')) {
-          chatBox.textContent = 'Ошибка сети: нет связи с серверами Google. Проверьте интернет или VPN.';
-        } else {
-          chatBox.textContent = 'Сбой ядра: ' + err.message;
-        }
+        chatBox.textContent = 'Сбой ядра: ' + err.message;
         setVisualState('', 'ОШИБКА');
       }
     }
